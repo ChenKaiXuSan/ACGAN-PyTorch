@@ -1,7 +1,7 @@
 # %%
 import os
 
-from trainer import Trainer_dcgan
+from trainer import Trainer_acgan
 from utils.utils import *
 from dataset.dataset import getdDataset
 
@@ -15,9 +15,10 @@ def get_parameters():
     parser = argparse.ArgumentParser()
 
     # Model hyper-parameters
-    parser.add_argument('--model', type=str, default='dcgan', choices=['gan', 'dcgan'])
+    parser.add_argument('--model', type=str, default='acgan', choices=['gan', 'acgan'])
     parser.add_argument('--img_size', type=int, default=64)
     parser.add_argument('--channels', type=int, default=1, help='number of image channels')
+    parser.add_argument('--n_classes', type=int, default=10, help='number of image classes')
     parser.add_argument('--g_num', type=int, default=5, help='train the generator every 5 steps')
     parser.add_argument('--z_dim', type=int, default=100, help='noise dim')
     parser.add_argument('--g_conv_dim', type=int, default=64)
@@ -73,8 +74,8 @@ def main(config):
     make_folder(config.sample_path, config.version + '/fake_images')
 
     if config.train:
-        if config.model == 'dcgan':
-            trainer = Trainer_dcgan(data_loader, config)
+        if config.model == 'acgan':
+            trainer = Trainer_acgan(data_loader, config)
         trainer.train()
     
 # %% 

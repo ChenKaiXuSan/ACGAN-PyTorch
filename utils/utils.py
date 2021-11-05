@@ -65,8 +65,8 @@ def var2numpy(x):
 def str2bool(v):
     return v.lower() in ('true')
 
-def to_Tensor(x, *arg):
-    Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.LongTensor
+def to_LongTensor(x, *arg):
+    Tensor = torch.cuda.LongTensor if torch.cuda.is_available() else torch.LongTensor
     return Tensor(x, *arg)
 
 # custom weights initialization called on netG and netD
@@ -91,9 +91,9 @@ def save_sample_one_image(sample_path, real_images, fake_images, epoch, number=0
     real_images_path = os.path.join(sample_path, str(epoch), 'real_images')
     fake_images_path = os.path.join(sample_path, str(epoch), 'fake_images')
 
-    # saved image must more than 2048 sheet
-    # the number of the generaed images must larger than 2048
-    while len(os.listdir(real_images_path)) <= 2048:
+    # saved image must more than 10000 sheet
+    # the number of the generaed images must larger than 10000
+    while len(os.listdir(real_images_path)) <= 10000:
         for i in range(real_images.size(0)):
             # save real image
             one_real_image = real_images[i]
@@ -113,7 +113,7 @@ def save_sample_one_image(sample_path, real_images, fake_images, epoch, number=0
 
             number += 1
         
-        if number == 1000:
+        if number == 10000:
             break
 
 def save_sample(path, images, epoch):
@@ -126,3 +126,11 @@ def save_sample(path, images, epoch):
         epoch (int): now epoch int, for the save image name
     '''    
     save_image(images.data[:100], os.path.join(path, '{}.png'.format(epoch)), normalize=True, nrow=10)
+
+def compute_acc(real_aux, fake_aux, labels, gen_labels):
+    # Calculate discriminator accuracy
+    pred = np.concatenate([real_aux.data.cpu().numpy(), fake_aux.data.cpu().numpy()], axis=0)
+    gt = np.concatenate([labels.data.cpu().numpy(), gen_labels.data.cpu().numpy()], axis=0)
+    d_acc = np.mean(np.argmax(pred, axis=1) == gt)
+
+    return d_acc

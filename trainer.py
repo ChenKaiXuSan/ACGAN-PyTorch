@@ -11,13 +11,13 @@ import torch.nn as nn
 import torchvision
 from torchvision.utils import save_image
 
-from models.dcgan import Generator, Discriminator
+from models.acgan import Generator, Discriminator
 from utils.utils import *
 
 # %%
-class Trainer_dcgan(object):
+class Trainer_acgan(object):
     def __init__(self, data_loader, config):
-        super(Trainer_dcgan, self).__init__()
+        super(Trainer_acgan, self).__init__()
 
         # data loader 
         self.data_loader = data_loader
@@ -30,6 +30,7 @@ class Trainer_dcgan(object):
         self.g_num = config.g_num
         self.z_dim = config.z_dim
         self.channels = config.channels
+        self.n_classes = config.n_classes
         self.g_conv_dim = config.g_conv_dim
         self.d_conv_dim = config.d_conv_dim
 
@@ -67,16 +68,19 @@ class Trainer_dcgan(object):
         '''
 
         # fixed input for debugging
-        fixed_z = tensor2var(torch.randn(self.batch_size, self.z_dim, 1, 1)) # (*, 100, 1, 1)
+        fixed_z = tensor2var(torch.randn(self.batch_size, self.z_dim)) # (*, 100)
+        fixed_labels = tensor2var(torch.randint(0, self.n_classes, (self.batch_size,), dtype=torch.long))
+        # fixed_labels = to_LongTensor(np.array([num for _ in range(self.n_classes) for num in range(self.n_classes)]))
 
         for epoch in range(self.epochs):
             # start time
             start_time = time.time()
 
-            for i, (real_images, _) in enumerate(self.data_loader):
+            for i, (real_images, labels) in enumerate(self.data_loader):
 
                 # configure input 
                 real_images = tensor2var(real_images)
+                labels = tensor2var(labels)
                 
                 # adversarial ground truths
                 valid = tensor2var(torch.full((real_images.size(0),), 0.9)) # (*, )
@@ -89,17 +93,18 @@ class Trainer_dcgan(object):
                 self.D.zero_grad()
 
                 # compute loss with real images 
-                d_out_real = self.D(real_images)
+                dis_out_real, aux_out_real = self.D(real_images)
 
-                d_loss_real = self.adversarial_loss_sigmoid(d_out_real, valid)
+                d_loss_real = self.adversarial_loss_sigmoid(dis_out_real, valid) + self.aux_loss(aux_out_real, labels)
 
                 # noise z for generator
-                z = tensor2var(torch.randn(real_images.size(0), self.z_dim, 1, 1)) # 64, 100, 1, 1
+                z = tensor2var(torch.randn(real_images.size(0), self.z_dim)) # *, 100
+                gen_labels = tensor2var(torch.randint(0, self.n_classes, (real_images.size(0),), dtype=torch.long))
 
-                fake_images = self.G(z) # (*, c, 64, 64)
-                d_out_fake = self.D(fake_images) # (*,)
+                fake_images = self.G(z, gen_labels) # (*, c, 64, 64)
+                dis_out_fake, aux_out_fake = self.D(fake_images) # (*,)
 
-                d_loss_fake = self.adversarial_loss_sigmoid(d_out_fake, fake)
+                d_loss_fake = self.adversarial_loss_sigmoid(dis_out_fake, fake) + self.aux_loss(aux_out_fake, gen_labels)
 
                 # total d loss
                 d_loss = d_loss_real + d_loss_fake
@@ -108,18 +113,21 @@ class Trainer_dcgan(object):
                 # update D
                 self.d_optimizer.step()
 
+                # calculate dis accuracy
+                d_acc = compute_acc(aux_out_real, aux_out_fake, labels, gen_labels)
+
                 # train the generator every 5 steps
                 if i % self.g_num == 0:
 
                     # =================== Train G and gumbel =====================
                     self.G.zero_grad()
                     # create random noise 
-                    fake_images = self.G(z)
+                    fake_images = self.G(z, gen_labels)
 
                     # compute loss with fake images 
-                    g_out_fake = self.D(fake_images) # batch x n
+                    dis_out_fake, aux_out_fake = self.D(fake_images) # batch x n
 
-                    g_loss_fake = self.adversarial_loss_sigmoid(g_out_fake, valid)
+                    g_loss_fake = self.adversarial_loss_sigmoid(dis_out_fake, valid) + self.aux_loss(aux_out_fake, gen_labels)
 
                     g_loss_fake.backward()
                     # update G
@@ -134,9 +142,9 @@ class Trainer_dcgan(object):
             if (epoch) % self.log_step == 0:
                 elapsed = time.time() - start_time
                 elapsed = str(datetime.timedelta(seconds=elapsed))
-                print("Elapsed [{}], G_step [{}/{}], D_step[{}/{}], d_out_gp: {:.4f}, g_loss: {:.4f}, "
+                print("Elapsed [{}], G_step [{}/{}], D_step[{}/{}], d_loss: {:.4f}, g_loss: {:.4f}, Acc: {:.4f}"
                     .format(elapsed, epoch, self.epochs, epoch,
-                            self.epochs, d_loss.item(), g_loss_fake.item()))
+                            self.epochs, d_loss.item(), g_loss_fake.item(), d_acc))
 
             # sample images 
             if (epoch) % self.sample_step == 0:
@@ -145,7 +153,7 @@ class Trainer_dcgan(object):
                 save_sample(self.sample_path + '/real_images/', real_images, epoch)
                 
                 with torch.no_grad():
-                    fake_images = self.G(fixed_z)
+                    fake_images = self.G(fixed_z, fixed_labels)
                     # save fake image 
                     save_sample(self.sample_path + '/fake_images/', fake_images, epoch)
                     
@@ -168,7 +176,8 @@ class Trainer_dcgan(object):
         self.d_optimizer = torch.optim.Adam(self.D.parameters(), self.d_lr, [self.beta1, self.beta2])
 
         # for orignal gan loss function
-        self.adversarial_loss_sigmoid = nn.BCEWithLogitsLoss()
+        self.adversarial_loss_sigmoid = nn.BCEWithLogitsLoss().cuda()
+        self.aux_loss = nn.CrossEntropyLoss().cuda()
 
         # print networks
         print(self.G)
