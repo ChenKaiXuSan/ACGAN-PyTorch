@@ -90,9 +90,11 @@ For the 10k epochs training on MNIST dataset, I get the FID:
 > 30.041369604914507 :warning: this score test with about 2430 sample images.
 <!-- > 45.773477203217055 :warning: this score test with about 10330 sample images, like the FID paper said that. -->
 - CIFAR10
-For the 10k epochs training on MNIST dataset, and test with abtou 10330 sample images, I get the FID: 
+For the 10k epochs training on MNIST dataset, and test with about 10175 sample images, I get the FID: 
 > 88.56693304882776
 - FASHION-MNIST
+For the 10k epochs training on FASHION-MNIST dataset, and test with about 10330 sample images, I get the FID: 
+> 59.17757331797742
 
 > :warning: I dont konw if the FID is right or not, because I cant get the lowwer score like the paper or the other people get it. 
 ## Network structure
