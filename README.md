@@ -8,7 +8,6 @@ With full coments and my code style.
 If you're new to ACGAN, here's an abstract straight from the paper[1]:
 
 In this paper we introduce new methods for the improved training of generative adversarial net- works (GANs) for image synthesis. We con- struct a variant of GANs employing label condi- tioning that results in 128 × 128 resolution im- age samples exhibiting global coherence. We expand on previous work for image quality as- sessment to provide two new analyses for assess- ing the discriminability and diversity of samples from class-conditional image synthesis models. These analyses demonstrate that high resolution samples provide class information not present in low resolution samples. Across 1000 ImageNet classes, 128 × 128 samples are more than twice as discriminable as artificially resized 32 × 32 samples. In addition, 84.7% of the classes have samples exhibiting diversity comparable to real ImageNet data.
-1.
 
 ## Dataset 
 - MNIST
@@ -86,9 +85,8 @@ FID is a measure of similarity between two datasets of images. It was shown to c
 For the FID, I use the pytorch implement of this repository. [FID score for PyTorch](https://github.com/mseitzer/pytorch-fid)
 
 - MNIST
-For the 10k epochs training on MNIST dataset, I get the FID: 
-> 30.041369604914507 :warning: this score test with about 2430 sample images.
-<!-- > 45.773477203217055 :warning: this score test with about 10330 sample images, like the FID paper said that. -->
+For the 10k epochs training on MNIST dataset, and test with about 10330 images, I get the FID: 
+> 27.366197607529955 
 - CIFAR10
 For the 10k epochs training on MNIST dataset, and test with about 10175 sample images, I get the FID: 
 > 88.56693304882776
